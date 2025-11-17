@@ -2,6 +2,7 @@
 test/
 example.ts
 tsconfig.json
+biome.json
 
 # IDE
 .cursor/
