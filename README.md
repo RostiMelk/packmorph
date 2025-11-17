@@ -71,6 +71,27 @@ packmorph("npm create vite@latest my-app", { parseCreate: true });
 
 **Note:** `npm create` requires `--` before additional args. Packmorph handles this automatically.
 
+### Multi-line (opt-in)
+
+```typescript
+packmorph(
+  `
+  # Install dependencies
+  npm install react
+  npm install -D typescript
+  npx prettier --write .
+`,
+  { parseMultiLine: true, parseExec: true },
+);
+// → { ok: true, commands: [
+//     { original: "npm install react", result: {...} },
+//     { original: "npm install -D typescript", result: {...} },
+//     { original: "npx prettier --write .", result: {...} }
+//   ] }
+```
+
+**Note:** Automatically skips comments (`#`), empty lines, and non-package-manager commands (`cd`, `mkdir`, `echo`).
+
 ## Options
 
 ```typescript
@@ -79,6 +100,7 @@ interface PackmorphOptions {
   parseExec?: boolean; // default: false
   parseRun?: boolean; // default: false
   parseCreate?: boolean; // default: false
+  parseMultiLine?: boolean; // default: false
 }
 ```
 
@@ -90,6 +112,7 @@ const result = packmorph(command, {
   parseExec: true,
   parseRun: true,
   parseCreate: true,
+  parseMultiLine: true,
 });
 ```
 

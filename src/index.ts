@@ -6,7 +6,9 @@ export type {
 	ExecMeta,
 	ExecSuccessResult,
 	InstallSuccessResult,
+	MultiLineResult,
 	PackageManager,
+	PackmorphMultiLineResult,
 	PackmorphOptions,
 	PackmorphResult,
 	ParsedCommand,
@@ -29,6 +31,8 @@ import { parseInstallCommand } from "./parsers/install.js";
 import { parseRunCommand } from "./parsers/run.js";
 import type {
 	ErrorResult,
+	MultiLineResult,
+	PackmorphMultiLineResult,
 	PackmorphOptions,
 	PackmorphResult,
 	ParsedCommand,
@@ -39,6 +43,7 @@ const DEFAULT_OPTIONS: Required<PackmorphOptions> = {
 	parseExec: false,
 	parseRun: false,
 	parseCreate: false,
+	parseMultiLine: false,
 };
 
 function parseCommand(
@@ -99,6 +104,7 @@ function generateCommands(parsed: ParsedCommand): PackmorphResult {
  * @param options.parseExec - Enable exec command parsing (npx, dlx, bunx) (default: false)
  * @param options.parseRun - Enable run command parsing (default: false)
  * @param options.parseCreate - Enable create command parsing (default: false)
+ * @param options.parseMultiLine - Enable multi-line command parsing (default: false)
  * @returns Result object with converted commands for all package managers, or an error
  *
  * @example
@@ -122,6 +128,15 @@ function generateCommands(parsed: ParsedCommand): PackmorphResult {
  * // → { ok: true, npm: "npm create vite -- my-app", pnpm: "pnpm create vite my-app", ... }
  *
  * @example
+ * // Multi-line command blocks (opt-in, ignores comments and unsupported commands)
+ * packmorph(`
+ *   # Install dependencies
+ *   npm install react
+ *   npm install -D typescript
+ * `, { parseMultiLine: true })
+ * // → { ok: true, commands: [{ original: "npm install react", result: {...} }, ...] }
+ *
+ * @example
  * // Enable all command types
  * packmorph(command, {
  *   parseInstall: true,
@@ -132,12 +147,24 @@ function generateCommands(parsed: ParsedCommand): PackmorphResult {
  */
 export function packmorph(
 	command: string,
+	options?: PackmorphOptions & { parseMultiLine?: false },
+): PackmorphResult;
+export function packmorph(
+	command: string,
+	options: PackmorphOptions & { parseMultiLine: true },
+): PackmorphMultiLineResult;
+export function packmorph(
+	command: string,
 	options: PackmorphOptions = {},
-): PackmorphResult {
+): PackmorphResult | PackmorphMultiLineResult {
 	const opts: Required<PackmorphOptions> = {
 		...DEFAULT_OPTIONS,
 		...options,
 	};
+
+	if (opts.parseMultiLine) {
+		return parseMultiLineCommands(command, opts);
+	}
 
 	const parsed = parseCommand(command, opts);
 
@@ -146,6 +173,50 @@ export function packmorph(
 	}
 
 	return generateCommands(parsed as ParsedCommand);
+}
+
+function parseMultiLineCommands(
+	input: string,
+	options: Required<PackmorphOptions>,
+): MultiLineResult {
+	const lines = input.split("\n");
+	const results: MultiLineResult["commands"] = [];
+
+	for (const line of lines) {
+		const trimmed = line.trim();
+
+		// Skip empty lines and comments
+		if (!trimmed || trimmed.startsWith("#")) {
+			continue;
+		}
+
+		// Skip common non-package-manager commands
+		if (
+			trimmed.startsWith("cd ") ||
+			trimmed.startsWith("mkdir ") ||
+			trimmed.startsWith("echo ")
+		) {
+			continue;
+		}
+
+		const parsed = parseCommand(trimmed, options);
+
+		if ("ok" in parsed && !parsed.ok) {
+			// Skip commands that couldn't be parsed
+			continue;
+		}
+
+		const result = generateCommands(parsed as ParsedCommand);
+		results.push({
+			original: trimmed,
+			result,
+		});
+	}
+
+	return {
+		ok: true,
+		commands: results,
+	};
 }
 
 export default packmorph;

@@ -26,6 +26,12 @@ export interface PackmorphOptions {
 	 * @default false
 	 */
 	parseCreate?: boolean;
+
+	/**
+	 * Enable multi-line command parsing (handles code blocks with multiple commands)
+	 * @default false
+	 */
+	parseMultiLine?: boolean;
 }
 
 export interface CommandMeta {
@@ -119,6 +125,16 @@ export interface ErrorResult {
 }
 
 export type PackmorphResult = SuccessResult | ErrorResult;
+
+export interface MultiLineResult {
+	ok: true;
+	commands: Array<{
+		original: string;
+		result: SuccessResult | ErrorResult;
+	}>;
+}
+
+export type PackmorphMultiLineResult = MultiLineResult | ErrorResult;
 
 export interface ParsedInstallCommand {
 	type: "install";

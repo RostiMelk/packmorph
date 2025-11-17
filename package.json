@@ -1,56 +1,56 @@
 {
-	"name": "packmorph",
-	"version": "1.1.0",
-	"description": "Translate package manager install commands between npm, pnpm, Yarn, and Bun",
-	"type": "module",
-	"main": "./dist/index.js",
-	"module": "./dist/index.js",
-	"types": "./dist/index.d.ts",
-	"exports": {
-		".": {
-			"import": "./dist/index.js",
-			"types": "./dist/index.d.ts",
-			"require": "./dist/index.cjs"
-		}
-	},
-	"files": [
-		"dist",
-		"src"
-	],
-	"scripts": {
-		"build": "bun build src/index.ts --outdir dist --target node --format esm --sourcemap=external && bun build src/index.ts --outfile dist/index.cjs --target node --format cjs --sourcemap=inline && bun run build:types",
-		"build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
-		"prepublishOnly": "bun run build",
-		"test": "bun test",
-		"format": "biome format --write",
-		"lint": "biome lint --write",
-		"check": "biome check --write",
-		"ci": "biome ci"
-	},
-	"keywords": [
-		"package-manager",
-		"npm",
-		"pnpm",
-		"yarn",
-		"bun",
-		"converter",
-		"translate"
-	],
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/RostiMelk/packmorph.git"
-	},
-	"bugs": {
-		"url": "https://github.com/RostiMelk/packmorph/issues"
-	},
-	"homepage": "https://github.com/RostiMelk/packmorph#readme",
-	"author": "",
-	"license": "MIT",
-	"devDependencies": {
-		"@biomejs/biome": "2.3.6",
-		"@types/bun": "latest"
-	},
-	"peerDependencies": {
-		"typescript": "^5"
-	}
+  "name": "packmorph",
+  "version": "1.2.0",
+  "description": "Translate package manager install commands between npm, pnpm, Yarn, and Bun",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node --format esm --sourcemap=external && bun build src/index.ts --outfile dist/index.cjs --target node --format cjs --sourcemap=inline && bun run build:types",
+    "build:types": "tsc --declaration --emitDeclarationOnly --outDir dist",
+    "prepublishOnly": "bun run build",
+    "test": "bun test",
+    "format": "biome format --write",
+    "lint": "biome lint --write",
+    "check": "biome check --write",
+    "ci": "biome ci"
+  },
+  "keywords": [
+    "package-manager",
+    "npm",
+    "pnpm",
+    "yarn",
+    "bun",
+    "converter",
+    "translate"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RostiMelk/packmorph.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RostiMelk/packmorph/issues"
+  },
+  "homepage": "https://github.com/RostiMelk/packmorph#readme",
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@biomejs/biome": "2.3.6",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
 }
