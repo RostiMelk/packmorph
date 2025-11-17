@@ -34,6 +34,11 @@ function parseCommand(command: string): ParsedCommand | ErrorResult {
 		return { ok: false, reason: "not-install-command" };
 	}
 
+	// Reject code blocks with surrounding code
+	if (/[;\n]|&&|\|\||(\(.*\)(?!\s*(npm|pnpm|yarn|bun)))/.test(trimmed)) {
+		return { ok: false, reason: "not-install-command" };
+	}
+
 	const parts = trimmed.split(/\s+/);
 
 	if (parts.length === 0) {

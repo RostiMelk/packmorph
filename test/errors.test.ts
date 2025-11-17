@@ -108,3 +108,63 @@ describe("error cases - parse-error", () => {
 		}
 	});
 });
+
+describe("error cases - code blocks", () => {
+	test("rejects code block with other code before command", () => {
+		const result = packmorph("const result = npm install react");
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.reason).toBe("not-install-command");
+		}
+	});
+
+	test("rejects code block with semicolon and other code", () => {
+		const result = packmorph("npm install react; console.log('done')");
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.reason).toBe("not-install-command");
+		}
+	});
+
+	test("rejects multiline code snippet", () => {
+		const result = packmorph(`const pkg = 'react';
+npm install react
+console.log('installed');`);
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.reason).toBe("not-install-command");
+		}
+	});
+
+	test("rejects code with function call wrapping command", () => {
+		const result = packmorph("exec('npm install react')");
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.reason).toBe("not-install-command");
+		}
+	});
+
+	test("rejects command with && shell operator after", () => {
+		const result = packmorph("npm install react && echo done");
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.reason).toBe("not-install-command");
+		}
+	});
+
+	test("rejects command with || shell operator after", () => {
+		const result = packmorph("pnpm add typescript || exit 1");
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.reason).toBe("not-install-command");
+		}
+	});
+
+	test("rejects command chained with multiple operators", () => {
+		const result = packmorph("yarn add lodash && npm run build || echo fail");
+		expect(result.ok).toBe(false);
+		if (!result.ok) {
+			expect(result.reason).toBe("not-install-command");
+		}
+	});
+});
