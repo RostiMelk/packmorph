@@ -3,12 +3,12 @@ import { packmorph } from "../src/index.js";
 
 describe("multi-line commands", () => {
 	describe("basic multi-line parsing", () => {
-		test("parses multiple install commands", () => {
+		test("parses multiple install commands from same package manager", () => {
 			const result = packmorph(
 				`
 npm install react
 npm install -D typescript
-pnpm add vitest
+npm install vitest
 `,
 				{ parseMultiLine: true },
 			);
@@ -18,7 +18,7 @@ pnpm add vitest
 				expect(result.commands).toHaveLength(3);
 				expect(result.commands[0].original).toBe("npm install react");
 				expect(result.commands[1].original).toBe("npm install -D typescript");
-				expect(result.commands[2].original).toBe("pnpm add vitest");
+				expect(result.commands[2].original).toBe("npm install vitest");
 			}
 		});
 
@@ -30,7 +30,7 @@ npm install react
 npm install -D typescript
 
 
-pnpm add vitest
+npm install vitest
 `,
 				{ parseMultiLine: true },
 			);
@@ -265,7 +265,7 @@ npm install -D typescript
 
 		test("handles mixed line endings", () => {
 			const result = packmorph(
-				"npm install react\r\nnpm install -D typescript\npnpm add vitest",
+				"npm install react\r\nnpm install -D typescript\nnpm install vitest",
 				{ parseMultiLine: true },
 			);
 
@@ -306,6 +306,91 @@ npm install    react     lodash
 				expect(result.commands[0].original).toBe(
 					"npm install    react     lodash",
 				);
+			}
+		});
+	});
+
+	describe("mixed package managers", () => {
+		test("rejects commands with mixed package managers", () => {
+			const result = packmorph(
+				`
+npm install react
+pnpm add typescript
+`,
+				{ parseMultiLine: true },
+			);
+
+			expect(result.ok).toBe(false);
+			if (!result.ok) {
+				expect(result.reason).toBe("mixed-package-managers");
+			}
+		});
+
+		test("rejects mixed npm and yarn commands", () => {
+			const result = packmorph(
+				`
+npm install react
+yarn add typescript
+npm install -D vitest
+`,
+				{ parseMultiLine: true },
+			);
+
+			expect(result.ok).toBe(false);
+			if (!result.ok) {
+				expect(result.reason).toBe("mixed-package-managers");
+			}
+		});
+
+		test("rejects mixed exec commands", () => {
+			const result = packmorph(
+				`
+npx prettier .
+pnpm dlx eslint .
+`,
+				{ parseMultiLine: true, parseExec: true },
+			);
+
+			expect(result.ok).toBe(false);
+			if (!result.ok) {
+				expect(result.reason).toBe("mixed-package-managers");
+			}
+		});
+
+		test("allows same package manager with different command types", () => {
+			const result = packmorph(
+				`
+npm install react
+npx prettier .
+npm run dev
+`,
+				{
+					parseMultiLine: true,
+					parseInstall: true,
+					parseExec: true,
+					parseRun: true,
+				},
+			);
+
+			expect(result.ok).toBe(true);
+			if (result.ok && "commands" in result) {
+				expect(result.commands).toHaveLength(3);
+			}
+		});
+
+		test("rejects mixed package managers even with non-PM commands in between", () => {
+			const result = packmorph(
+				`
+npm install react
+cd my-project
+pnpm add typescript
+`,
+				{ parseMultiLine: true },
+			);
+
+			expect(result.ok).toBe(false);
+			if (!result.ok) {
+				expect(result.reason).toBe("mixed-package-managers");
 			}
 		});
 	});

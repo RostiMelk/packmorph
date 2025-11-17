@@ -178,35 +178,39 @@ export function packmorph(
 function parseMultiLineCommands(
 	input: string,
 	options: Required<PackmorphOptions>,
-): MultiLineResult {
+): MultiLineResult | ErrorResult {
 	const lines = input.split("\n");
 	const results: MultiLineResult["commands"] = [];
+	let detectedManager: PackageManager | null = null;
 
 	for (const line of lines) {
 		const trimmed = line.trim();
 
-		// Skip empty lines and comments
+		// Skip empty lines and comments - they'll be preserved by the consumer
 		if (!trimmed || trimmed.startsWith("#")) {
-			continue;
-		}
-
-		// Skip common non-package-manager commands
-		if (
-			trimmed.startsWith("cd ") ||
-			trimmed.startsWith("mkdir ") ||
-			trimmed.startsWith("echo ")
-		) {
 			continue;
 		}
 
 		const parsed = parseCommand(trimmed, options);
 
 		if ("ok" in parsed && !parsed.ok) {
-			// Skip commands that couldn't be parsed
+			// Skip commands that couldn't be parsed - they'll be preserved by the consumer
 			continue;
 		}
 
-		const result = generateCommands(parsed as ParsedCommand);
+		const parsedCommand = parsed as ParsedCommand;
+
+		// Check for mixed package managers
+		if (detectedManager === null) {
+			detectedManager = parsedCommand.manager;
+		} else if (detectedManager !== parsedCommand.manager) {
+			return {
+				ok: false,
+				reason: "mixed-package-managers",
+			};
+		}
+
+		const result = generateCommands(parsedCommand);
 		results.push({
 			original: trimmed,
 			result,

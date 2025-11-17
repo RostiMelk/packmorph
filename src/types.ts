@@ -121,7 +121,8 @@ export interface ErrorResult {
 		| "not-supported-command"
 		| "parse-error"
 		| "disabled-command-type"
-		| "not-install-command";
+		| "not-install-command"
+		| "mixed-package-managers";
 }
 
 export type PackmorphResult = SuccessResult | ErrorResult;

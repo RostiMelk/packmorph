@@ -90,7 +90,79 @@ packmorph(
 //   ] }
 ```
 
-**Note:** Automatically skips comments (`#`), empty lines, and non-package-manager commands (`cd`, `mkdir`, `echo`).
+**Note:** The `commands` array only contains lines that were successfully parsed as package manager commands. Comments (`#`), empty lines, and non-package-manager commands (like `cd`, `mkdir`, `echo`) are skipped in the returned array.
+
+**Preserving all lines:** If you need to preserve non-package-manager commands in your output, match each line against the parsed commands:
+
+```typescript
+const input = `
+# Install dependencies
+npm install react
+cd my-project
+npm run dev
+`;
+
+const result = packmorph(input, {
+  parseMultiLine: true,
+  parseInstall: true,
+  parseRun: true,
+});
+
+if (result.ok && "commands" in result) {
+  // Create a map for quick lookup
+  const commandMap = new Map(
+    result.commands
+      .filter((cmd) => cmd.result.ok)
+      .map((cmd) => [cmd.original, cmd.result]),
+  );
+
+  // Process each line
+  const npmLines = [];
+  const pnpmLines = [];
+
+  for (const line of input.split("\n")) {
+    const trimmed = line.trim();
+    const parsed = commandMap.get(trimmed);
+
+    if (parsed && parsed.ok) {
+      // Line was parsed - use transformed commands
+      npmLines.push(parsed.npm);
+      pnpmLines.push(parsed.pnpm);
+    } else {
+      // Line wasn't parsed - preserve as-is
+      npmLines.push(line);
+      pnpmLines.push(line);
+    }
+  }
+
+  console.log(npmLines.join("\n"));
+  // # Install dependencies
+  // npm install react
+  // cd my-project
+  // npm run dev
+
+  console.log(pnpmLines.join("\n"));
+  // # Install dependencies
+  // pnpm add react
+  // cd my-project
+  // pnpm run dev
+}
+```
+
+**Important:** Multi-line parsing requires all package manager commands to use the **same package manager**. Mixing different package managers will return an error:
+
+```typescript
+packmorph(
+  `
+  npm install react
+  pnpm add typescript
+`,
+  { parseMultiLine: true },
+);
+// → { ok: false, reason: "mixed-package-managers" }
+```
+
+This ensures consistent command conversion across all package managers (npm → pnpm, yarn, bun).
 
 ## Options
 
@@ -181,7 +253,19 @@ packmorph(command: string, options?: PackmorphOptions): PackmorphResult
 ```typescript
 {
   ok: false,
-  reason: "not-install-command" | "parse-error" | "not-supported-command"
+  reason: "not-install-command" | "parse-error" | "not-supported-command" | "disabled-command-type" | "mixed-package-managers"
+}
+```
+
+**Multi-line Success:**
+
+```typescript
+{
+  ok: true,
+  commands: Array<{
+    original: string,
+    result: PackmorphResult
+  }>
 }
 ```
 
