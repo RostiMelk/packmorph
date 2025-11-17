@@ -1,6 +1,6 @@
 # packmorph
 
-Translate package manager install commands between npm, pnpm, Yarn, and Bun.
+Translate package manager commands between npm, pnpm, Yarn, and Bun.
 
 [![npm version](https://badge.fury.io/js/packmorph.svg)](https://badge.fury.io/js/packmorph)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -8,31 +8,13 @@ Translate package manager install commands between npm, pnpm, Yarn, and Bun.
 ```typescript
 import { packmorph } from "packmorph";
 
-// From npm
-const result1 = packmorph("npm install -D typescript");
-if (result1.ok) {
-  console.log(result1.npm); // npm install -D typescript
-  console.log(result1.pnpm); // pnpm add -D typescript
-  console.log(result1.yarn); // yarn add --dev typescript
-  console.log(result1.bun); // bun add --dev typescript
-}
-
-// From yarn
-const result2 = packmorph("yarn global add eslint");
-if (result2.ok) {
-  console.log(result2.npm); // npm install -g eslint
-  console.log(result2.pnpm); // pnpm add -g eslint
-  console.log(result2.yarn); // yarn global add eslint
-  console.log(result2.bun); // bun add -g eslint
-}
-
-// From bun
-const result3 = packmorph("bun add -d vitest");
-if (result3.ok) {
-  console.log(result3.npm); // npm install -D vitest
-  console.log(result3.pnpm); // pnpm add -D vitest
-  console.log(result3.yarn); // yarn add --dev vitest
-  console.log(result3.bun); // bun add --dev vitest
+// Install commands (default)
+const result = packmorph("npm install -D typescript");
+if (result.ok) {
+  console.log(result.npm); // npm install -D typescript
+  console.log(result.pnpm); // pnpm add -D typescript
+  console.log(result.yarn); // yarn add --dev typescript
+  console.log(result.bun); // bun add --dev typescript
 }
 ```
 
@@ -44,43 +26,117 @@ npm install packmorph
 
 ## What it does
 
-Give it an install command from any of the four major package managers (npm, pnpm, Yarn, or Bun), and it returns the equivalent command for all of them. Useful for documentation, tooling, or learning how commands translate across ecosystems.
+Converts package manager commands between npm, pnpm, Yarn, and Bun. Supports install, exec, run, and create commands.
 
-**Accepts:**
+## Command Types
+
+### Install (default)
+
+```typescript
+packmorph("npm install react");
+packmorph("pnpm add -D vitest");
+packmorph("yarn global add eslint");
+packmorph("bun add --exact lodash");
+```
+
+### Exec (opt-in)
+
+```typescript
+packmorph("npx prettier .", { parseExec: true });
+// → npm: npx prettier .
+// → pnpm: pnpm dlx prettier .
+// → yarn: yarn dlx prettier .
+// → bun: bunx prettier .
+```
+
+### Run (opt-in)
+
+```typescript
+packmorph("npm run dev", { parseRun: true });
+// → npm: npm run dev
+// → pnpm: pnpm run dev
+// → yarn: yarn run dev
+// → bun: bun run dev
+```
+
+### Create (opt-in)
+
+```typescript
+packmorph("npm create vite@latest my-app", { parseCreate: true });
+// → npm: npm create vite@latest -- my-app
+// → pnpm: pnpm create vite@latest my-app
+// → yarn: yarn create vite@latest my-app
+// → bun: bun create vite@latest my-app
+```
+
+**Note:** `npm create` requires `--` before additional args. Packmorph handles this automatically.
+
+## Options
+
+```typescript
+interface PackmorphOptions {
+  parseInstall?: boolean; // default: true
+  parseExec?: boolean; // default: false
+  parseRun?: boolean; // default: false
+  parseCreate?: boolean; // default: false
+}
+```
+
+Enable multiple command types:
+
+```typescript
+const result = packmorph(command, {
+  parseInstall: true,
+  parseExec: true,
+  parseRun: true,
+  parseCreate: true,
+});
+```
+
+## Supported Commands
+
+### Install
 
 - `npm install` / `npm i`
 - `pnpm add` / `pnpm install`
 - `yarn add` / `yarn install` / `yarn global add`
 - `bun add` / `bun install`
 
-**Returns commands for:**
+### Exec
 
-- npm
-- pnpm
-- Yarn
-- Bun
+- `npx <package>`
+- `pnpm dlx <package>`
+- `yarn dlx <package>`
+- `bunx <package>`
 
-## Flags supported
+### Run
 
-All the common ones work: `-D` (dev), `-g` (global), `-E` (exact), `-O` (optional), `-P` (peer), `--frozen-lockfile`.
+- `npm run <script>`
+- `pnpm run <script>`
+- `yarn run <script>`
+- `bun run <script>`
 
-Version specifiers are preserved: `react@18.2.0`, `@types/node`, `package@next`, etc.
+### Create
 
-### Flag Normalization
+- `npm create <template>`
+- `pnpm create <template>`
+- `yarn create <template>`
+- `bun create <template>`
 
-When converting from Yarn or Bun commands, flags are automatically normalized to npm/pnpm style:
+## Flags
 
-- `yarn add --dev` → `npm install -D` (long form → short form)
-- `bun add -d` → `npm install -D` (lowercase → uppercase)
+Install commands support: `-D` (dev), `-g` (global), `-E` (exact), `-O` (optional), `-P` (peer), `--frozen-lockfile`.
+
+Flags are automatically normalized:
+
+- `yarn add --dev` → `npm install -D`
+- `bun add -d` → `npm install -D`
 - `yarn add --exact` → `npm install -E`
-- `bun add --global` → `npm install -g`
-
-This ensures consistent, idiomatic output for each package manager.
 
 ## API
 
 ```typescript
-packmorph(command: string): PackmorphResult
+packmorph(command: string, options?: PackmorphOptions): PackmorphResult
 ```
 
 **Success:**
@@ -88,17 +144,12 @@ packmorph(command: string): PackmorphResult
 ```typescript
 {
   ok: true,
+  type: "install" | "exec" | "run" | "create",
   npm: string,
   pnpm: string,
   yarn: string,
   bun: string,
-  meta: {
-    manager: "npm" | "pnpm" | "yarn" | "bun",
-    packages: string[],
-    dev: boolean,
-    global: boolean,
-    // ... other flags
-  }
+  meta: { /* command-specific metadata */ }
 }
 ```
 
@@ -107,7 +158,7 @@ packmorph(command: string): PackmorphResult
 ```typescript
 {
   ok: false,
-  reason: "not-install-command" | "parse-error"
+  reason: "not-install-command" | "parse-error" | "not-supported-command"
 }
 ```
 
