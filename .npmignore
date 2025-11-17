@@ -1,0 +1,25 @@
+# Development files
+test/
+example.ts
+tsconfig.json
+
+# IDE
+.cursor/
+.vscode/
+.idea/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+
+# Build artifacts
+*.tsbuildinfo
