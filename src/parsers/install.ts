@@ -1,8 +1,4 @@
-import type {
-	ErrorResult,
-	PackageManager,
-	ParsedInstallCommand,
-} from "../types.js";
+import type { ErrorResult, ParsedInstallCommand } from "../types.js";
 
 export function parseInstallCommand(
 	command: string,
