@@ -32,6 +32,7 @@ import { parseRunCommand } from "./parsers/run.js";
 import type {
 	ErrorResult,
 	MultiLineResult,
+	PackageManager,
 	PackmorphMultiLineResult,
 	PackmorphOptions,
 	PackmorphResult,
