@@ -155,7 +155,7 @@ describe("run commands", () => {
 			const result = packmorph("npm run dev");
 			expect(result.ok).toBe(false);
 			if (!result.ok) {
-				expect(result.reason).toBe("not-install-command");
+				expect(result.reason).toBe("not-supported-command");
 			}
 		});
 

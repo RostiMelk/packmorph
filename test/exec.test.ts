@@ -175,7 +175,7 @@ describe("exec commands", () => {
 			const result = packmorph("npx eslint .");
 			expect(result.ok).toBe(false);
 			if (!result.ok) {
-				expect(result.reason).toBe("not-install-command");
+				expect(result.reason).toBe("not-supported-command");
 			}
 		});
 

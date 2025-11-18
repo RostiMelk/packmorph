@@ -19,20 +19,16 @@ export type {
 	SuccessResult,
 } from "./types.js";
 
-import { generateCreateCommands } from "./generators/create.js";
-import { generateExecCommands } from "./generators/exec.js";
-import { generateInstallCommands } from "./generators/install.js";
-import { generateRunCommands } from "./generators/run.js";
-import { parseCreateCommand } from "./parsers/create.js";
-import { parseExecCommand } from "./parsers/exec.js";
-import { parseInstallCommand } from "./parsers/install.js";
-import { parseRunCommand } from "./parsers/run.js";
+import type { CommandNode } from "./ast.js";
+import { INVALID_COMMAND_PATTERNS } from "./constants.js";
+import { Lexer } from "./lexer.js";
+import { Parser } from "./parser.js";
+import { Transformer } from "./transformer.js";
 import type {
 	ErrorResult,
 	PackageManager,
 	PackmorphOptions,
 	PackmorphResult,
-	ParsedCommand,
 	SuccessResult,
 } from "./types.js";
 
@@ -47,50 +43,72 @@ const DEFAULT_OPTIONS: Required<PackmorphOptions> = {
 function parseCommand(
 	command: string,
 	options: Required<PackmorphOptions>,
-): ParsedCommand | ErrorResult {
-	const parsers: Array<{
-		enabled: boolean;
-		parse: (cmd: string) => ParsedCommand | ErrorResult;
-	}> = [
-		{ enabled: options.parseInstall, parse: parseInstallCommand },
-		{ enabled: options.parseExec, parse: parseExecCommand },
-		{ enabled: options.parseRun, parse: parseRunCommand },
-		{ enabled: options.parseCreate, parse: parseCreateCommand },
-	];
+): CommandNode | ErrorResult {
+	// Validate command doesn't contain shell operators or multiline
+	const trimmed = command.trim();
 
-	let lastError: ErrorResult | null = null;
-
-	for (const { enabled, parse } of parsers) {
-		if (!enabled) continue;
-
-		const result = parse(command);
-		if ("ok" in result && !result.ok) {
-			lastError = result;
-			continue;
-		}
-		return result;
+	if (!trimmed) {
+		return { ok: false, reason: "not-supported-command" };
 	}
 
-	// Return the last error if we have one, otherwise return not-supported-command
-	// For backwards compatibility, if only parseInstall is enabled, return not-install-command errors
-	if (lastError) {
-		return lastError;
+	// Check for invalid patterns based on command type
+	let pattern = INVALID_COMMAND_PATTERNS.STANDARD;
+
+	// Check if this is an exec command
+	const isExecCommand =
+		trimmed.startsWith("npx ") ||
+		trimmed === "npx" ||
+		trimmed.startsWith("bunx ") ||
+		trimmed === "bunx" ||
+		/^(pnpm|yarn)\s+dlx(\s|$)/.test(trimmed);
+
+	// If it's an exec command but parseExec is disabled, return error
+	if (isExecCommand && !options.parseExec) {
+		return { ok: false, reason: "not-supported-command" };
 	}
 
-	return { ok: false, reason: "not-supported-command" };
+	// Use appropriate pattern for validation
+	if (isExecCommand) {
+		pattern = INVALID_COMMAND_PATTERNS.EXEC;
+	}
+
+	if (pattern.test(trimmed)) {
+		return { ok: false, reason: "not-supported-command" };
+	}
+
+	// Tokenize and parse
+	const lexer = new Lexer(trimmed);
+	const tokens = lexer.tokenize();
+	const parser = new Parser(tokens);
+	const ast = parser.parse();
+
+	// If parsing failed, return the error
+	if ("ok" in ast && !ast.ok) {
+		return ast;
+	}
+
+	const commandNode = ast as CommandNode;
+
+	// Check if the parsed command type is enabled
+	if (commandNode.type === "InstallCommand" && !options.parseInstall) {
+		return { ok: false, reason: "disabled-command-type" };
+	}
+	if (commandNode.type === "ExecCommand" && !options.parseExec) {
+		return { ok: false, reason: "not-supported-command" };
+	}
+	if (commandNode.type === "RunCommand" && !options.parseRun) {
+		return { ok: false, reason: "not-supported-command" };
+	}
+	if (commandNode.type === "CreateCommand" && !options.parseCreate) {
+		return { ok: false, reason: "not-supported-command" };
+	}
+
+	return commandNode;
 }
 
-function generateCommands(parsed: ParsedCommand): PackmorphResult {
-	switch (parsed.type) {
-		case "install":
-			return generateInstallCommands(parsed);
-		case "exec":
-			return generateExecCommands(parsed);
-		case "run":
-			return generateRunCommands(parsed);
-		case "create":
-			return generateCreateCommands(parsed);
-	}
+function generateCommands(ast: CommandNode): PackmorphResult {
+	const transformer = new Transformer();
+	return transformer.transform(ast);
 }
 
 /**
@@ -170,7 +188,7 @@ export function packmorph(
 		return parsed;
 	}
 
-	return generateCommands(parsed as ParsedCommand);
+	return generateCommands(parsed as CommandNode);
 }
 
 function parseMultiLineCommands(
@@ -199,12 +217,12 @@ function parseMultiLineCommands(
 			continue;
 		}
 
-		const parsedCommand = parsed as ParsedCommand;
+		const parsedCommand = parsed as CommandNode;
 
 		// Check for mixed package managers
 		if (detectedManager === null) {
-			detectedManager = parsedCommand.manager;
-		} else if (detectedManager !== parsedCommand.manager) {
+			detectedManager = parsedCommand.manager.value;
+		} else if (detectedManager !== parsedCommand.manager.value) {
 			return {
 				ok: false,
 				reason: "mixed-package-managers",

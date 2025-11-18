@@ -1,12 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { packmorph } from "../src/index";
 
-describe("error cases - not-install-command", () => {
+describe("error cases - not-supported-command", () => {
 	test("rejects npm run command", () => {
 		const result = packmorph("npm run dev");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -14,7 +14,7 @@ describe("error cases - not-install-command", () => {
 		const result = packmorph("pnpm run build");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -22,7 +22,7 @@ describe("error cases - not-install-command", () => {
 		const result = packmorph("yarn run dev");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -30,7 +30,7 @@ describe("error cases - not-install-command", () => {
 		const result = packmorph("bun run build");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -38,7 +38,7 @@ describe("error cases - not-install-command", () => {
 		const result = packmorph("");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -54,7 +54,7 @@ describe("error cases - not-install-command", () => {
 		const result = packmorph("npm update react");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -62,7 +62,7 @@ describe("error cases - not-install-command", () => {
 		const result = packmorph("pnpm update react");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -70,7 +70,7 @@ describe("error cases - not-install-command", () => {
 		const result = packmorph("yarn update react");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -78,7 +78,7 @@ describe("error cases - not-install-command", () => {
 		const result = packmorph("bun update react");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -86,7 +86,7 @@ describe("error cases - not-install-command", () => {
 		const result = packmorph("cargo add some-crate");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 });
@@ -114,7 +114,7 @@ describe("error cases - code blocks", () => {
 		const result = packmorph("const result = npm install react");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -122,7 +122,7 @@ describe("error cases - code blocks", () => {
 		const result = packmorph("npm install react; console.log('done')");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -132,7 +132,7 @@ npm install react
 console.log('installed');`);
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -140,7 +140,7 @@ console.log('installed');`);
 		const result = packmorph("exec('npm install react')");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -148,7 +148,7 @@ console.log('installed');`);
 		const result = packmorph("npm install react && echo done");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -156,7 +156,7 @@ console.log('installed');`);
 		const result = packmorph("pnpm add typescript || exit 1");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 
@@ -164,7 +164,7 @@ console.log('installed');`);
 		const result = packmorph("yarn add lodash && npm run build || echo fail");
 		expect(result.ok).toBe(false);
 		if (!result.ok) {
-			expect(result.reason).toBe("not-install-command");
+			expect(result.reason).toBe("not-supported-command");
 		}
 	});
 });
