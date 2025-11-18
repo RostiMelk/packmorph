@@ -1,20 +1,20 @@
+import { FLAG_MAP } from "../constants.js";
 import type { ErrorResult, ParsedInstallCommand } from "../types.js";
+import {
+	createErrorResult,
+	isValidPackageManager,
+	validateCommand,
+} from "../utils.js";
 
 export function parseInstallCommand(
 	command: string,
 ): ParsedInstallCommand | ErrorResult {
-	const trimmed = command.trim();
-
-	if (!trimmed) {
+	const validationError = validateCommand(command);
+	if (validationError) {
 		return { ok: false, reason: "not-install-command" };
 	}
 
-	// Reject code blocks with surrounding code
-	if (/[;\n]|&&|\|\||(\(.*\)(?!\s*(npm|pnpm|yarn|bun)))/.test(trimmed)) {
-		return { ok: false, reason: "not-install-command" };
-	}
-
-	const parts = trimmed.split(/\s+/);
+	const parts = command.trim().split(/\s+/);
 
 	if (parts.length === 0) {
 		return { ok: false, reason: "not-install-command" };
@@ -22,17 +22,12 @@ export function parseInstallCommand(
 
 	const manager = parts[0];
 
-	if (
-		manager !== "npm" &&
-		manager !== "pnpm" &&
-		manager !== "yarn" &&
-		manager !== "bun"
-	) {
+	if (!manager || !isValidPackageManager(manager)) {
 		return { ok: false, reason: "not-install-command" };
 	}
 
 	if (parts.length === 1) {
-		return { ok: false, reason: "parse-error" };
+		return createErrorResult("parse-error");
 	}
 
 	const subcommand = parts[1];
@@ -75,25 +70,6 @@ export function parseInstallCommand(
 		frozen: false,
 	};
 
-	const flagMap: Record<string, keyof typeof flagState> = {
-		"-D": "dev",
-		"--save-dev": "dev",
-		"--dev": "dev",
-		"-d": "dev",
-		"-g": "global",
-		"--global": "global",
-		"-E": "exact",
-		"--save-exact": "exact",
-		"--exact": "exact",
-		"-O": "optional",
-		"--save-optional": "optional",
-		"--optional": "optional",
-		"-P": "peer",
-		"--save-peer": "peer",
-		"--peer": "peer",
-		"--frozen-lockfile": "frozen",
-	};
-
 	let i = 0;
 	while (i < args.length) {
 		const arg = args[i];
@@ -105,14 +81,14 @@ export function parseInstallCommand(
 
 		if (arg === "--") {
 			if (i === args.length - 1) {
-				return { ok: false, reason: "parse-error" };
+				return createErrorResult("parse-error");
 			}
 			i++;
 			continue;
 		}
 
 		if (arg.startsWith("-")) {
-			const flagKey = flagMap[arg];
+			const flagKey = FLAG_MAP[arg as keyof typeof FLAG_MAP];
 			if (flagKey) {
 				flagState[flagKey] = true;
 			}

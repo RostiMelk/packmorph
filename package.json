@@ -1,6 +1,6 @@
 {
 	"name": "packmorph",
-	"version": "1.2.3",
+	"version": "1.2.4",
 	"description": "Translate package manager install commands between npm, pnpm, Yarn, and Bun",
 	"type": "module",
 	"main": "./dist/index.js",

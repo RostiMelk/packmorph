@@ -1,23 +1,23 @@
+import { INVALID_COMMAND_PATTERNS } from "../constants.js";
 import type {
 	ErrorResult,
 	PackageManager,
 	ParsedExecCommand,
 } from "../types.js";
+import { createErrorResult, validateCommand } from "../utils.js";
 
 export function parseExecCommand(
 	command: string,
 ): ParsedExecCommand | ErrorResult {
-	const trimmed = command.trim();
-
-	if (!trimmed) {
-		return { ok: false, reason: "not-supported-command" };
+	const validationError = validateCommand(
+		command,
+		INVALID_COMMAND_PATTERNS.EXEC,
+	);
+	if (validationError) {
+		return validationError;
 	}
 
-	if (/[;\n]|&&|\|\||(\(.*\)(?!\s*(npx|pnpm|yarn|bunx)))/.test(trimmed)) {
-		return { ok: false, reason: "not-supported-command" };
-	}
-
-	const parts = trimmed.split(/\s+/);
+	const parts = command.trim().split(/\s+/);
 
 	if (parts.length === 0) {
 		return { ok: false, reason: "not-supported-command" };
@@ -41,7 +41,7 @@ export function parseExecCommand(
 	}
 
 	if (parts.length <= packageStartIndex) {
-		return { ok: false, reason: "parse-error" };
+		return createErrorResult("parse-error");
 	}
 
 	const remainingArgs = parts.slice(packageStartIndex);
@@ -70,7 +70,7 @@ export function parseExecCommand(
 	}
 
 	if (!packageName) {
-		return { ok: false, reason: "parse-error" };
+		return createErrorResult("parse-error");
 	}
 
 	return {

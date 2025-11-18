@@ -1,19 +1,19 @@
 import type { ErrorResult, ParsedCreateCommand } from "../types.js";
+import {
+	createErrorResult,
+	isValidPackageManager,
+	validateCommand,
+} from "../utils.js";
 
 export function parseCreateCommand(
 	command: string,
 ): ParsedCreateCommand | ErrorResult {
-	const trimmed = command.trim();
-
-	if (!trimmed) {
-		return { ok: false, reason: "not-supported-command" };
+	const validationError = validateCommand(command);
+	if (validationError) {
+		return validationError;
 	}
 
-	if (/[;\n]|&&|\|\||(\(.*\)(?!\s*(npm|pnpm|yarn|bun)))/.test(trimmed)) {
-		return { ok: false, reason: "not-supported-command" };
-	}
-
-	const parts = trimmed.split(/\s+/);
+	const parts = command.trim().split(/\s+/);
 
 	if (parts.length === 0) {
 		return { ok: false, reason: "not-supported-command" };
@@ -21,17 +21,12 @@ export function parseCreateCommand(
 
 	const manager = parts[0];
 
-	if (
-		manager !== "npm" &&
-		manager !== "pnpm" &&
-		manager !== "yarn" &&
-		manager !== "bun"
-	) {
+	if (!manager || !isValidPackageManager(manager)) {
 		return { ok: false, reason: "not-supported-command" };
 	}
 
 	if (parts.length === 1) {
-		return { ok: false, reason: "parse-error" };
+		return createErrorResult("parse-error");
 	}
 
 	const subcommand = parts[1];
@@ -41,18 +36,15 @@ export function parseCreateCommand(
 	}
 
 	if (parts.length === 2) {
-		return { ok: false, reason: "parse-error" };
+		return createErrorResult("parse-error");
 	}
 
 	const template = parts[2];
 
 	if (!template) {
-		return { ok: false, reason: "parse-error" };
+		return createErrorResult("parse-error");
 	}
 
-	// Handle -- separator (mainly for npm create)
-	// npm create template -- --flag arg
-	// pnpm/yarn/bun create template --flag arg
 	const remainingArgs = parts.slice(3);
 	const additionalArgs: string[] = [];
 	let foundSeparator = false;
@@ -62,7 +54,6 @@ export function parseCreateCommand(
 			continue;
 		}
 
-		// Track if we've seen the -- separator
 		if (arg === "--") {
 			foundSeparator = true;
 			continue;

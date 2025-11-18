@@ -1,3 +1,4 @@
+import { KNOWN_INSTALL_FLAGS } from "../constants.js";
 import type { InstallSuccessResult, ParsedInstallCommand } from "../types.js";
 
 export function generateInstallCommands(
@@ -27,25 +28,9 @@ export function generateInstallCommands(
 		}
 	}
 
-	const knownFlags = new Set([
-		"-D",
-		"--save-dev",
-		"--dev",
-		"-d",
-		"-g",
-		"--global",
-		"-E",
-		"--save-exact",
-		"--exact",
-		"-O",
-		"--save-optional",
-		"--optional",
-		"-P",
-		"--save-peer",
-		"--peer",
-		"--frozen-lockfile",
-	]);
-	const unknownFlags = flags.rawFlags.filter((f) => !knownFlags.has(f));
+	const unknownFlags = flags.rawFlags.filter(
+		(f) => !KNOWN_INSTALL_FLAGS.has(f),
+	);
 
 	const findFlag = (variants: string[], fallback: string): string => {
 		if (manager === "npm" || manager === "pnpm") {
