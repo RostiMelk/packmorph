@@ -1,3 +1,4 @@
+export { PACKAGE_MANAGERS } from "./constants.js";
 export type {
 	CommandMeta,
 	CreateMeta,
