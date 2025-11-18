@@ -121,7 +121,6 @@ export interface ErrorResult {
 		| "not-supported-command"
 		| "parse-error"
 		| "disabled-command-type"
-		| "not-install-command"
 		| "mixed-package-managers";
 }
 
