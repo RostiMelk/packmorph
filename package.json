@@ -1,6 +1,6 @@
 {
 	"name": "packmorph",
-	"version": "1.2.1",
+	"version": "1.2.3",
 	"description": "Translate package manager install commands between npm, pnpm, Yarn, and Bun",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -52,5 +52,8 @@
 	},
 	"peerDependencies": {
 		"typescript": "^5"
+	},
+	"dependencies": {
+		"outdent": "^0.8.0"
 	}
 }

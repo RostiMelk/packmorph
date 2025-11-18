@@ -74,95 +74,46 @@ packmorph("npm create vite@latest my-app", { parseCreate: true });
 ### Multi-line (opt-in)
 
 ```typescript
-packmorph(
-  `
-  # Install dependencies
-  npm install react
-  npm install -D typescript
-  npx prettier --write .
-`,
+const result = packmorph(
+  `# Install dependencies
+npm install react
+npm install -D typescript
+cd my-project
+npx prettier --write .`,
   { parseMultiLine: true, parseExec: true },
 );
-// → { ok: true, commands: [
-//     { original: "npm install react", result: {...} },
-//     { original: "npm install -D typescript", result: {...} },
-//     { original: "npx prettier --write .", result: {...} }
-//   ] }
-```
 
-**Note:** The `commands` array only contains lines that were successfully parsed as package manager commands. Comments (`#`), empty lines, and non-package-manager commands (like `cd`, `mkdir`, `echo`) are skipped in the returned array.
-
-**Preserving all lines:** If you need to preserve non-package-manager commands in your output, match each line against the parsed commands:
-
-```typescript
-const input = `
-# Install dependencies
-npm install react
-cd my-project
-npm run dev
-`;
-
-const result = packmorph(input, {
-  parseMultiLine: true,
-  parseInstall: true,
-  parseRun: true,
-});
-
-if (result.ok && "commands" in result) {
-  // Create a map for quick lookup
-  const commandMap = new Map(
-    result.commands
-      .filter((cmd) => cmd.result.ok)
-      .map((cmd) => [cmd.original, cmd.result]),
-  );
-
-  // Process each line
-  const npmLines = [];
-  const pnpmLines = [];
-
-  for (const line of input.split("\n")) {
-    const trimmed = line.trim();
-    const parsed = commandMap.get(trimmed);
-
-    if (parsed && parsed.ok) {
-      // Line was parsed - use transformed commands
-      npmLines.push(parsed.npm);
-      pnpmLines.push(parsed.pnpm);
-    } else {
-      // Line wasn't parsed - preserve as-is
-      npmLines.push(line);
-      pnpmLines.push(line);
-    }
-  }
-
-  console.log(npmLines.join("\n"));
+if (result.ok) {
+  console.log(result.npm);
   // # Install dependencies
   // npm install react
+  // npm install -D typescript
   // cd my-project
-  // npm run dev
+  // npx prettier --write .
 
-  console.log(pnpmLines.join("\n"));
+  console.log(result.pnpm);
   // # Install dependencies
   // pnpm add react
+  // pnpm add -D typescript
   // cd my-project
-  // pnpm run dev
+  // pnpm dlx prettier --write .
 }
 ```
+
+**Note:** Multi-line mode automatically preserves comments (`#`), empty lines, and non-package-manager commands (like `cd`, `mkdir`, `echo`). Only package manager commands are transformed - everything else passes through unchanged.
 
 **Important:** Multi-line parsing requires all package manager commands to use the **same package manager**. Mixing different package managers will return an error:
 
 ```typescript
-packmorph(
-  `
-  npm install react
-  pnpm add typescript
-`,
+const result = packmorph(
+  `npm install react
+pnpm add typescript`,
   { parseMultiLine: true },
 );
 // → { ok: false, reason: "mixed-package-managers" }
 ```
 
-This ensures consistent command conversion across all package managers (npm → pnpm, yarn, bun).
+This ensures consistent command conversion across all package managers.
 
 ## Options
 
@@ -259,15 +210,21 @@ packmorph(command: string, options?: PackmorphOptions): PackmorphResult
 
 **Multi-line Success:**
 
+When `parseMultiLine: true`, the result has the same structure as single-line mode:
+
 ```typescript
 {
   ok: true,
-  commands: Array<{
-    original: string,
-    result: PackmorphResult
-  }>
+  type: "install" | "exec" | "run" | "create",
+  npm: string,
+  pnpm: string,
+  yarn: string,
+  bun: string,
+  meta: { /* command-specific metadata */ }
 }
 ```
+
+The `npm`, `pnpm`, `yarn`, and `bun` properties contain the full transformed multi-line text with non-package-manager lines preserved.
 
 ## License
 

@@ -1,82 +1,93 @@
 import { describe, expect, test } from "bun:test";
+import outdent from "outdent";
 import { packmorph } from "../src/index.js";
 
 describe("multi-line commands", () => {
 	describe("basic multi-line parsing", () => {
 		test("parses multiple install commands from same package manager", () => {
 			const result = packmorph(
-				`
-npm install react
-npm install -D typescript
-npm install vitest
-`,
+				outdent`
+		          npm install react
+		          npm install -D typescript
+		        `,
 				{ parseMultiLine: true },
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands).toHaveLength(3);
-				expect(result.commands[0].original).toBe("npm install react");
-				expect(result.commands[1].original).toBe("npm install -D typescript");
-				expect(result.commands[2].original).toBe("npm install vitest");
+			if (result.ok) {
+				expect(result.npm).toBe("npm install react\nnpm install -D typescript");
+				expect(result.pnpm).toBe("pnpm add react\npnpm add -D typescript");
+				expect(result.yarn).toBe("yarn add react\nyarn add --dev typescript");
+				expect(result.bun).toBe("bun add react\nbun add --dev typescript");
 			}
 		});
 
 		test("ignores empty lines", () => {
 			const result = packmorph(
-				`
-npm install react
+				outdent`
+		          npm install react
 
-npm install -D typescript
+		          npm install -D typescript
 
 
-npm install vitest
-`,
+		          npm install vitest
+		        `,
 				{ parseMultiLine: true },
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands).toHaveLength(3);
+			if (result.ok) {
+				expect(result.npm).toBe(
+					"npm install react\n\nnpm install -D typescript\n\n\nnpm install vitest",
+				);
+				expect(result.pnpm).toBe(
+					"pnpm add react\n\npnpm add -D typescript\n\n\npnpm add vitest",
+				);
 			}
 		});
 
-		test("ignores comment lines", () => {
+		test("preserves comment lines", () => {
 			const result = packmorph(
-				`
-# Install dependencies
-npm install react
-# Install dev dependencies
-npm install -D typescript
-`,
+				outdent`
+		          # Install dependencies
+		          npm install react
+		          # Install dev dependencies
+		          npm install -D typescript
+		        `,
 				{ parseMultiLine: true },
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands).toHaveLength(2);
-				expect(result.commands[0].original).toBe("npm install react");
-				expect(result.commands[1].original).toBe("npm install -D typescript");
+			if (result.ok) {
+				expect(result.npm).toBe(
+					"# Install dependencies\nnpm install react\n# Install dev dependencies\nnpm install -D typescript",
+				);
+				expect(result.pnpm).toBe(
+					"# Install dependencies\npnpm add react\n# Install dev dependencies\npnpm add -D typescript",
+				);
 			}
 		});
 
-		test("ignores non-package-manager commands", () => {
+		test("preserves non-package-manager commands", () => {
 			const result = packmorph(
-				`
-cd my-project
-npm install react
-mkdir src
-npm install -D typescript
-echo "Done"
-`,
+				outdent`
+		          cd my-project
+		          npm install react
+		          mkdir src
+		          npm install -D typescript
+		          echo "Done"
+		        `,
 				{ parseMultiLine: true },
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands).toHaveLength(2);
-				expect(result.commands[0].original).toBe("npm install react");
-				expect(result.commands[1].original).toBe("npm install -D typescript");
+			if (result.ok) {
+				expect(result.npm).toBe(
+					'cd my-project\nnpm install react\nmkdir src\nnpm install -D typescript\necho "Done"',
+				);
+				expect(result.pnpm).toBe(
+					'cd my-project\npnpm add react\nmkdir src\npnpm add -D typescript\necho "Done"',
+				);
 			}
 		});
 	});
@@ -84,78 +95,62 @@ echo "Done"
 	describe("real-world examples", () => {
 		test("handles Astro + Sanity example", () => {
 			const result = packmorph(
-				`
-# outside your studio directory
-npm create astro@latest astro-hello-world -- --template with-tailwindcss --typescript strict --skip-houston --install --git
-cd astro-hello-world
-`,
+				outdent`
+		          # outside your studio directory
+		          npm create astro@latest astro-hello-world -- --template with-tailwindcss --typescript strict --skip-houston --install --git
+		          cd astro-hello-world
+		        `,
 				{ parseMultiLine: true, parseCreate: true },
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands).toHaveLength(1);
-				expect(result.commands[0].original).toContain(
-					"npm create astro@latest",
-				);
-				const cmd = result.commands[0].result;
-				if (cmd.ok) {
-					expect(cmd.npm).toContain("npm create astro@latest");
-					expect(cmd.pnpm).toContain("pnpm create astro@latest");
-					expect(cmd.type).toBe("create");
-				}
+			if (result.ok) {
+				expect(result.npm).toContain("npm create astro@latest");
+				expect(result.npm).toContain("cd astro-hello-world");
+				expect(result.pnpm).toContain("pnpm create astro@latest");
+				expect(result.pnpm).toContain("cd astro-hello-world");
+				expect(result.type).toBe("create");
 			}
 		});
 
 		test("handles multiple command types", () => {
 			const result = packmorph(
-				`
-# your-project-folder/astro-hello-world
-npx astro add @sanity/astro -y
-npm install astro-portabletext
-`,
+				outdent`
+		          # your-project-folder/astro-hello-world
+		          npx astro add @sanity/astro -y
+		          npm install astro-portabletext
+		        `,
 				{ parseMultiLine: true, parseExec: true, parseInstall: true },
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands).toHaveLength(2);
-
-				// First command is exec
-				expect(result.commands[0].original).toBe(
-					"npx astro add @sanity/astro -y",
+			if (result.ok) {
+				expect(result.npm).toBe(
+					"# your-project-folder/astro-hello-world\nnpx astro add @sanity/astro -y\nnpm install astro-portabletext",
 				);
-				const exec = result.commands[0].result;
-				if (exec.ok) {
-					expect(exec.type).toBe("exec");
-					expect(exec.npm).toBe("npx astro add @sanity/astro -y");
-					expect(exec.pnpm).toBe("pnpm dlx astro add @sanity/astro -y");
-				}
-
-				// Second command is install
-				expect(result.commands[1].original).toBe(
-					"npm install astro-portabletext",
+				expect(result.pnpm).toBe(
+					"# your-project-folder/astro-hello-world\npnpm dlx astro add @sanity/astro -y\npnpm add astro-portabletext",
 				);
-				const install = result.commands[1].result;
-				if (install.ok) {
-					expect(install.type).toBe("install");
-					expect(install.npm).toBe("npm install astro-portabletext");
-					expect(install.pnpm).toBe("pnpm add astro-portabletext");
-				}
+				expect(result.yarn).toBe(
+					"# your-project-folder/astro-hello-world\nyarn dlx astro add @sanity/astro -y\nyarn add astro-portabletext",
+				);
+				expect(result.bun).toBe(
+					"# your-project-folder/astro-hello-world\nbunx astro add @sanity/astro -y\nbun add astro-portabletext",
+				);
 			}
 		});
 
 		test("handles complex setup script", () => {
 			const result = packmorph(
-				`
-# Setup new project
-npm create vite@latest my-app -- --template react-ts
-cd my-app
-npm install
-npm install -D tailwindcss postcss autoprefixer
-npx tailwindcss init -p
-npm run dev
-`,
+				outdent`
+		          # Setup new project
+		          npm create vite@latest my-app -- --template react-ts
+		          cd my-app
+		          npm install
+		          npm install -D tailwindcss postcss autoprefixer
+		          npx tailwindcss init -p
+		          npm run dev
+		        `,
 				{
 					parseMultiLine: true,
 					parseCreate: true,
@@ -166,13 +161,18 @@ npm run dev
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands).toHaveLength(5);
+			if (result.ok) {
+				expect(result.npm).toContain("npm create vite@latest");
+				expect(result.npm).toContain("cd my-app");
+				expect(result.npm).toContain("npm install\n");
+				expect(result.npm).toContain("npx tailwindcss init -p");
+				expect(result.npm).toContain("npm run dev");
 
-				const types = result.commands.map((cmd) =>
-					cmd.result.ok ? cmd.result.type : null,
-				);
-				expect(types).toEqual(["create", "install", "install", "exec", "run"]);
+				expect(result.pnpm).toContain("pnpm create vite@latest");
+				expect(result.pnpm).toContain("cd my-app");
+				expect(result.pnpm).toContain("pnpm install\n");
+				expect(result.pnpm).toContain("pnpm dlx tailwindcss init -p");
+				expect(result.pnpm).toContain("pnpm run dev");
 			}
 		});
 	});
@@ -180,59 +180,58 @@ npm run dev
 	describe("with different parsers enabled", () => {
 		test("only parses install commands by default", () => {
 			const result = packmorph(
-				`
-npm install react
-npx prettier .
-npm run dev
-`,
+				outdent`
+		          npm install react
+		          npx prettier .
+		          npm run dev
+		        `,
 				{ parseMultiLine: true },
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				// Only install command should be parsed
-				expect(result.commands).toHaveLength(1);
-				expect(result.commands[0].original).toBe("npm install react");
+			if (result.ok) {
+				expect(result.npm).toBe(
+					"npm install react\nnpx prettier .\nnpm run dev",
+				);
+				expect(result.pnpm).toBe("pnpm add react\nnpx prettier .\nnpm run dev");
 			}
 		});
 
 		test("parses exec commands when enabled", () => {
 			const result = packmorph(
-				`
-npm install react
-npx prettier .
-`,
+				outdent`
+		          npm install react
+		          npx prettier .
+		        `,
 				{ parseMultiLine: true, parseExec: true },
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands).toHaveLength(2);
-				expect(
-					result.commands[0].result.ok && result.commands[0].result.type,
-				).toBe("install");
-				expect(
-					result.commands[1].result.ok && result.commands[1].result.type,
-				).toBe("exec");
+			if (result.ok) {
+				expect(result.npm).toBe("npm install react\nnpx prettier .");
+				expect(result.pnpm).toBe("pnpm add react\npnpm dlx prettier .");
 			}
 		});
 
 		test("skips unsupported commands silently", () => {
 			const result = packmorph(
-				`
-npm install react
-npm update lodash
-npm install -D typescript
-`,
+				outdent`
+		          npm install react
+		          npm update lodash
+		          npm install -D typescript
+		        `,
 				{ parseMultiLine: true },
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				// npm update is not supported, should be skipped
-				expect(result.commands).toHaveLength(2);
-				expect(result.commands[0].original).toBe("npm install react");
-				expect(result.commands[1].original).toBe("npm install -D typescript");
+			if (result.ok) {
+				// npm update is not supported, should be preserved as-is
+				expect(result.npm).toBe(
+					"npm install react\nnpm update lodash\nnpm install -D typescript",
+				);
+				expect(result.pnpm).toBe(
+					"pnpm add react\nnpm update lodash\npnpm add -D typescript",
+				);
 			}
 		});
 	});
@@ -241,25 +240,25 @@ npm install -D typescript
 		test("handles empty input", () => {
 			const result = packmorph("", { parseMultiLine: true });
 
-			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands).toHaveLength(0);
+			expect(result.ok).toBe(false);
+			if (!result.ok) {
+				expect(result.reason).toBe("not-supported-command");
 			}
 		});
 
 		test("handles only comments", () => {
 			const result = packmorph(
-				`
-# Comment 1
-# Comment 2
-# Comment 3
-`,
+				outdent`
+		          # Comment 1
+		          # Comment 2
+		          # Comment 3
+		        `,
 				{ parseMultiLine: true },
 			);
 
-			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands).toHaveLength(0);
+			expect(result.ok).toBe(false);
+			if (!result.ok) {
+				expect(result.reason).toBe("not-supported-command");
 			}
 		});
 
@@ -270,42 +269,47 @@ npm install -D typescript
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands.length).toBeGreaterThanOrEqual(2);
+			if (result.ok) {
+				expect(result.npm).toContain("npm install react");
+				expect(result.npm).toContain("npm install -D typescript");
+				expect(result.npm).toContain("npm install vitest");
 			}
 		});
 
-		test("handles inline comments (treats as invalid command)", () => {
+		test("handles inline comments (parses # as package name)", () => {
 			const result = packmorph(
-				`
-npm install react # Install React
-npm install -D typescript
-`,
+				outdent`
+		          npm install react # Install React
+		          npm install -D typescript
+		        `,
 				{ parseMultiLine: true },
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				// The first line with inline comment should fail to parse
-				// Only the second command should be parsed
-				expect(result.commands.length).toBeGreaterThanOrEqual(1);
-			}
-		});
-
-		test("preserves original command exactly", () => {
-			const result = packmorph(
-				`
-npm install    react     lodash
-`,
-				{ parseMultiLine: true },
-			);
-
-			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands).toHaveLength(1);
-				expect(result.commands[0].original).toBe(
-					"npm install    react     lodash",
+			if (result.ok) {
+				// The parser treats # and following words as package names
+				expect(result.npm).toBe(
+					"npm install react # Install React\nnpm install -D typescript",
 				);
+				expect(result.pnpm).toBe(
+					"pnpm add react # Install React\npnpm add -D typescript",
+				);
+				expect(result.yarn).toBe(
+					"yarn add react # Install React\nyarn add --dev typescript",
+				);
+			}
+		});
+
+		test("normalizes internal whitespace in parsed commands", () => {
+			const result = packmorph(`npm install    react     lodash`, {
+				parseMultiLine: true,
+			});
+
+			expect(result.ok).toBe(true);
+			if (result.ok) {
+				// Internal whitespace is normalized during parsing
+				expect(result.npm).toBe("npm install react lodash");
+				expect(result.pnpm).toBe("pnpm add react lodash");
 			}
 		});
 	});
@@ -313,10 +317,10 @@ npm install    react     lodash
 	describe("mixed package managers", () => {
 		test("rejects commands with mixed package managers", () => {
 			const result = packmorph(
-				`
-npm install react
-pnpm add typescript
-`,
+				outdent`
+		          npm install react
+		          pnpm add typescript
+		        `,
 				{ parseMultiLine: true },
 			);
 
@@ -328,11 +332,11 @@ pnpm add typescript
 
 		test("rejects mixed npm and yarn commands", () => {
 			const result = packmorph(
-				`
-npm install react
-yarn add typescript
-npm install -D vitest
-`,
+				outdent`
+		          npm install react
+		          yarn add typescript
+		          npm install -D vitest
+		        `,
 				{ parseMultiLine: true },
 			);
 
@@ -344,10 +348,10 @@ npm install -D vitest
 
 		test("rejects mixed exec commands", () => {
 			const result = packmorph(
-				`
-npx prettier .
-pnpm dlx eslint .
-`,
+				outdent`
+		          npx prettier .
+		          pnpm dlx eslint .
+		        `,
 				{ parseMultiLine: true, parseExec: true },
 			);
 
@@ -359,11 +363,11 @@ pnpm dlx eslint .
 
 		test("allows same package manager with different command types", () => {
 			const result = packmorph(
-				`
-npm install react
-npx prettier .
-npm run dev
-`,
+				outdent`
+		          npm install react
+		          npx prettier .
+		          npm run dev
+		        `,
 				{
 					parseMultiLine: true,
 					parseInstall: true,
@@ -373,18 +377,23 @@ npm run dev
 			);
 
 			expect(result.ok).toBe(true);
-			if (result.ok && "commands" in result) {
-				expect(result.commands).toHaveLength(3);
+			if (result.ok) {
+				expect(result.npm).toBe(
+					"npm install react\nnpx prettier .\nnpm run dev",
+				);
+				expect(result.pnpm).toBe(
+					"pnpm add react\npnpm dlx prettier .\npnpm run dev",
+				);
 			}
 		});
 
 		test("rejects mixed package managers even with non-PM commands in between", () => {
 			const result = packmorph(
-				`
-npm install react
-cd my-project
-pnpm add typescript
-`,
+				outdent`
+		          npm install react
+		          cd my-project
+		          pnpm add typescript
+		        `,
 				{ parseMultiLine: true },
 			);
 
@@ -396,15 +405,17 @@ pnpm add typescript
 	});
 
 	describe("type safety", () => {
-		test("returns MultiLineResult when parseMultiLine is true", () => {
+		test("returns SuccessResult when parseMultiLine is true", () => {
 			const result = packmorph("npm install react", {
 				parseMultiLine: true,
 			});
 
-			// TypeScript should infer this correctly
 			expect(result.ok).toBe(true);
 			if (result.ok) {
-				expect("commands" in result).toBe(true);
+				expect(typeof result.npm).toBe("string");
+				expect(typeof result.pnpm).toBe("string");
+				expect(typeof result.yarn).toBe("string");
+				expect(typeof result.bun).toBe("string");
 			}
 		});
 
@@ -415,10 +426,50 @@ pnpm add typescript
 
 			expect(result.ok).toBe(true);
 			if (result.ok) {
-				expect("npm" in result).toBe(true);
-				expect("pnpm" in result).toBe(true);
-				expect("yarn" in result).toBe(true);
-				expect("bun" in result).toBe(true);
+				expect(typeof result.npm).toBe("string");
+				expect(typeof result.pnpm).toBe("string");
+				expect(typeof result.yarn).toBe("string");
+				expect(typeof result.bun).toBe("string");
+			}
+		});
+	});
+
+	describe("whitespace preservation", () => {
+		test("preserves leading whitespace on unparsed lines", () => {
+			// Don't use outdent here - we want to preserve the leading spaces
+			const result = packmorph(
+				`  npm install react
+  cd my-project
+  npm install -D typescript`,
+				{ parseMultiLine: true },
+			);
+
+			expect(result.ok).toBe(true);
+			if (result.ok) {
+				expect(result.npm).toBe(
+					"  npm install react\n  cd my-project\n  npm install -D typescript",
+				);
+				expect(result.pnpm).toBe(
+					"  pnpm add react\n  cd my-project\n  pnpm add -D typescript",
+				);
+			}
+		});
+
+		test("preserves trailing empty lines", () => {
+			const result = packmorph(
+				`${outdent`
+				          npm install react
+				          npm install -D typescript
+
+				        `}\n`,
+				{ parseMultiLine: true },
+			);
+
+			expect(result.ok).toBe(true);
+			if (result.ok) {
+				expect(result.npm).toBe(
+					"npm install react\nnpm install -D typescript\n\n",
+				);
 			}
 		});
 	});

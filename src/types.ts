@@ -127,16 +127,6 @@ export interface ErrorResult {
 
 export type PackmorphResult = SuccessResult | ErrorResult;
 
-export interface MultiLineResult {
-	ok: true;
-	commands: Array<{
-		original: string;
-		result: SuccessResult | ErrorResult;
-	}>;
-}
-
-export type PackmorphMultiLineResult = MultiLineResult | ErrorResult;
-
 export interface ParsedInstallCommand {
 	type: "install";
 	manager: PackageManager;

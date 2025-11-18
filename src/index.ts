@@ -6,9 +6,7 @@ export type {
 	ExecMeta,
 	ExecSuccessResult,
 	InstallSuccessResult,
-	MultiLineResult,
 	PackageManager,
-	PackmorphMultiLineResult,
 	PackmorphOptions,
 	PackmorphResult,
 	ParsedCommand,
@@ -31,12 +29,11 @@ import { parseInstallCommand } from "./parsers/install.js";
 import { parseRunCommand } from "./parsers/run.js";
 import type {
 	ErrorResult,
-	MultiLineResult,
 	PackageManager,
-	PackmorphMultiLineResult,
 	PackmorphOptions,
 	PackmorphResult,
 	ParsedCommand,
+	SuccessResult,
 } from "./types.js";
 
 const DEFAULT_OPTIONS: Required<PackmorphOptions> = {
@@ -153,11 +150,11 @@ export function packmorph(
 export function packmorph(
 	command: string,
 	options: PackmorphOptions & { parseMultiLine: true },
-): PackmorphMultiLineResult;
+): PackmorphResult;
 export function packmorph(
 	command: string,
 	options: PackmorphOptions = {},
-): PackmorphResult | PackmorphMultiLineResult {
+): PackmorphResult {
 	const opts: Required<PackmorphOptions> = {
 		...DEFAULT_OPTIONS,
 		...options,
@@ -179,15 +176,18 @@ export function packmorph(
 function parseMultiLineCommands(
 	input: string,
 	options: Required<PackmorphOptions>,
-): MultiLineResult | ErrorResult {
+): SuccessResult | ErrorResult {
 	const lines = input.split("\n");
-	const results: MultiLineResult["commands"] = [];
+	const parsedCommands: Array<{
+		original: string;
+		result: SuccessResult;
+	}> = [];
 	let detectedManager: PackageManager | null = null;
 
 	for (const line of lines) {
 		const trimmed = line.trim();
 
-		// Skip empty lines and comments - they'll be preserved by the consumer
+		// Skip empty lines and comments - they'll be preserved in output
 		if (!trimmed || trimmed.startsWith("#")) {
 			continue;
 		}
@@ -195,7 +195,7 @@ function parseMultiLineCommands(
 		const parsed = parseCommand(trimmed, options);
 
 		if ("ok" in parsed && !parsed.ok) {
-			// Skip commands that couldn't be parsed - they'll be preserved by the consumer
+			// Skip commands that couldn't be parsed - they'll be preserved in output
 			continue;
 		}
 
@@ -212,16 +212,81 @@ function parseMultiLineCommands(
 		}
 
 		const result = generateCommands(parsedCommand);
-		results.push({
-			original: trimmed,
-			result,
-		});
+		if (result.ok) {
+			parsedCommands.push({
+				original: trimmed,
+				result,
+			});
+		}
 	}
 
+	// If no commands were parsed successfully, return error
+	if (parsedCommands.length === 0) {
+		return {
+			ok: false,
+			reason: "not-supported-command",
+		};
+	}
+
+	// Create a map of original commands to their results for quick lookup
+	const commandMap = new Map(
+		parsedCommands.map((cmd) => [cmd.original, cmd.result]),
+	);
+
+	// Process each line and build output for each package manager
+	const npmLines: string[] = [];
+	const pnpmLines: string[] = [];
+	const yarnLines: string[] = [];
+	const bunLines: string[] = [];
+
+	for (const line of lines) {
+		const trimmed = line.trim();
+		const parsedResult = commandMap.get(trimmed);
+
+		if (parsedResult) {
+			// Line was successfully parsed - use transformed commands
+			// Preserve any leading/trailing whitespace from original line
+			const leadingWhitespace = line.match(/^\s*/)?.[0] || "";
+			const trailingWhitespace = line.match(/\s*$/)?.[0] || "";
+
+			npmLines.push(leadingWhitespace + parsedResult.npm + trailingWhitespace);
+			pnpmLines.push(
+				leadingWhitespace + parsedResult.pnpm + trailingWhitespace,
+			);
+			yarnLines.push(
+				leadingWhitespace + parsedResult.yarn + trailingWhitespace,
+			);
+			bunLines.push(leadingWhitespace + parsedResult.bun + trailingWhitespace);
+		} else {
+			// Line wasn't parsed (empty, comment, or non-PM command) - preserve as-is
+			npmLines.push(line);
+			pnpmLines.push(line);
+			yarnLines.push(line);
+			bunLines.push(line);
+		}
+	}
+
+	// Determine the primary type (use the first command's type)
+	const firstCommand = parsedCommands[0];
+	if (!firstCommand) {
+		return {
+			ok: false,
+			reason: "not-supported-command",
+		};
+	}
+
+	const primaryType = firstCommand.result.type;
+
+	// Return a result that matches the SuccessResult interface
 	return {
 		ok: true,
-		commands: results,
-	};
+		type: primaryType,
+		npm: npmLines.join("\n"),
+		pnpm: pnpmLines.join("\n"),
+		yarn: yarnLines.join("\n"),
+		bun: bunLines.join("\n"),
+		meta: firstCommand.result.meta,
+	} as SuccessResult;
 }
 
 export default packmorph;
