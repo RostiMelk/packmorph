@@ -13,6 +13,8 @@ export interface Token {
 	value: string;
 	start: number;
 	end: number;
+	wasQuoted?: boolean;
+	quoteChar?: '"' | "'";
 }
 
 export class Lexer {
@@ -133,6 +135,8 @@ export class Lexer {
 			value,
 			start,
 			end: this.position,
+			wasQuoted: true,
+			quoteChar: quote as '"' | "'",
 		};
 	}
 

@@ -8,8 +8,8 @@ describe("AST-specific features", () => {
 			expect(result.ok).toBe(true);
 			if (result.ok && result.type === "install") {
 				expect(result.meta.packages).toEqual(["my-package"]);
-				expect(result.npm).toBe("npm install my-package");
-				expect(result.pnpm).toBe("pnpm add my-package");
+				expect(result.npm).toBe('npm install "my-package"');
+				expect(result.pnpm).toBe('pnpm add "my-package"');
 			}
 		});
 
@@ -18,7 +18,7 @@ describe("AST-specific features", () => {
 			expect(result.ok).toBe(true);
 			if (result.ok && result.type === "install") {
 				expect(result.meta.packages).toEqual(["my-package"]);
-				expect(result.npm).toBe("npm install my-package");
+				expect(result.npm).toBe("npm install 'my-package'");
 			}
 		});
 
@@ -51,7 +51,7 @@ describe("AST-specific features", () => {
 			expect(result.ok).toBe(true);
 			if (result.ok && result.type === "install") {
 				expect(result.meta.packages).toEqual(["react", "package-name", "vue"]);
-				expect(result.npm).toBe("npm install react package-name vue");
+				expect(result.npm).toBe('npm install react "package-name" vue');
 			}
 		});
 	});

@@ -357,6 +357,8 @@ export class Parser {
 			value: token.value,
 			start: token.start,
 			end: token.end,
+			wasQuoted: token.wasQuoted,
+			quoteChar: token.quoteChar,
 		};
 	}
 
