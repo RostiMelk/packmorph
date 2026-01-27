@@ -48,25 +48,28 @@ export function quoteArgument(
 	wasQuoted?: boolean,
 	quoteChar?: '"' | "'",
 ): string {
-	// Empty strings need quoting
-	// Check if quoting is needed (empty, spaces, or shell operators that would break parsing)
-	// Include: spaces, $, &, |, (, ), <, >, ", `, ', \
-	// Note: We preserve quotes if they were originally present (wasQuoted=true)
-	// but only auto-quote for characters that would break command parsing
-	const needsQuoting = value === "" || /[\s$&|()<>"`'\\]/.test(value);
+	// Check if quoting is needed
+	// For originally-quoted values: preserve quotes if value has ANY special characters (including globs)
+	// For auto-quoting: only quote characters that break shell parsing (not globs)
+	const hasSpecialChars =
+		value === "" || /[\s$&|()<>"`'\\;*?[\]{}!~@]/.test(value);
+	const needsAutoQuoting = value === "" || /[\s$&|()<>"`'\\;]/.test(value);
 
-	if (needsQuoting) {
-		// If it was originally quoted, preserve the original quote character
-		if (wasQuoted) {
-			const char = quoteChar || '"';
-			const escaped = value.replace(new RegExp(`\\${char}`, "g"), `\\${char}`);
-			return `${char}${escaped}${char}`;
-		}
-		// Otherwise, use double quotes by default
+	// If it was originally quoted, preserve quotes only if the value has special characters
+	// This allows normalization (removing unnecessary quotes from simple values like "react")
+	// while preserving quotes on values that need them (like "@/*")
+	if (wasQuoted && hasSpecialChars) {
+		const char = quoteChar || '"';
+		const escaped = value.replace(new RegExp(`\\${char}`, "g"), `\\${char}`);
+		return `${char}${escaped}${char}`;
+	}
+
+	// Auto-quote if needed (for unquoted values with spaces, $, etc.)
+	if (needsAutoQuoting) {
 		const escaped = value.replace(/"/g, '\\"');
 		return `"${escaped}"`;
 	}
 
-	// No quoting needed
+	// No quoting needed (or quoted but doesn't need quotes - normalize)
 	return value;
 }
