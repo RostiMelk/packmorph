@@ -12,6 +12,7 @@ import type {
 	RunSuccessResult,
 	SuccessResult,
 } from "./types.js";
+import { quoteArgument } from "./utils.js";
 
 export class Transformer {
 	transform(ast: CommandNode): SuccessResult {
@@ -32,6 +33,9 @@ export class Transformer {
 	): InstallSuccessResult {
 		const manager = ast.manager.value;
 		const packages = ast.packages.map((p) => p.value);
+		const quotedPackages = ast.packages.map((p) =>
+			quoteArgument(p.value, p.wasQuoted, p.quoteChar),
+		);
 		const hasPackages = packages.length > 0;
 
 		const flagState = {
@@ -155,10 +159,10 @@ export class Transformer {
 			pnpmParts.push(flag);
 		});
 
-		npmParts.push(...packages);
-		pnpmParts.push(...packages);
-		yarnParts.push(...packages);
-		bunParts.push(...packages);
+		npmParts.push(...quotedPackages);
+		pnpmParts.push(...quotedPackages);
+		yarnParts.push(...quotedPackages);
+		bunParts.push(...quotedPackages);
 
 		return {
 			ok: true,
@@ -188,10 +192,31 @@ export class Transformer {
 		const args = ast.args.map((a) => a.value);
 		const flags = ast.flags.map((f) => f.value);
 
-		const npmParts = ["npx", ...flags, packageName, ...args];
-		const pnpmParts = ["pnpm", "dlx", ...flags, packageName, ...args];
-		const yarnParts = ["yarn", "dlx", ...flags, packageName, ...args];
-		const bunParts = ["bunx", ...flags, packageName, ...args];
+		const quotedPackageName = quoteArgument(
+			ast.package.value,
+			ast.package.wasQuoted,
+			ast.package.quoteChar,
+		);
+		const quotedArgs = ast.args.map((a) =>
+			quoteArgument(a.value, a.wasQuoted, a.quoteChar),
+		);
+
+		const npmParts = ["npx", ...flags, quotedPackageName, ...quotedArgs];
+		const pnpmParts = [
+			"pnpm",
+			"dlx",
+			...flags,
+			quotedPackageName,
+			...quotedArgs,
+		];
+		const yarnParts = [
+			"yarn",
+			"dlx",
+			...flags,
+			quotedPackageName,
+			...quotedArgs,
+		];
+		const bunParts = ["bunx", ...flags, quotedPackageName, ...quotedArgs];
 
 		return {
 			ok: true,
@@ -215,10 +240,19 @@ export class Transformer {
 		const script = ast.script.value;
 		const args = ast.args.map((a) => a.value);
 
-		const npmParts = ["npm", "run", script, ...args];
-		const pnpmParts = ["pnpm", "run", script, ...args];
-		const yarnParts = ["yarn", "run", script, ...args];
-		const bunParts = ["bun", "run", script, ...args];
+		const quotedScript = quoteArgument(
+			ast.script.value,
+			ast.script.wasQuoted,
+			ast.script.quoteChar,
+		);
+		const quotedArgs = ast.args.map((a) =>
+			quoteArgument(a.value, a.wasQuoted, a.quoteChar),
+		);
+
+		const npmParts = ["npm", "run", quotedScript, ...quotedArgs];
+		const pnpmParts = ["pnpm", "run", quotedScript, ...quotedArgs];
+		const yarnParts = ["yarn", "run", quotedScript, ...quotedArgs];
+		const bunParts = ["bun", "run", quotedScript, ...quotedArgs];
 
 		return {
 			ok: true,
@@ -241,10 +275,19 @@ export class Transformer {
 		const template = ast.template.value;
 		const additionalArgs = ast.additionalArgs.map((a) => a.value);
 
-		const npmParts = ["npm", "create", template];
-		const pnpmParts = ["pnpm", "create", template];
-		const yarnParts = ["yarn", "create", template];
-		const bunParts = ["bun", "create", template];
+		const quotedTemplate = quoteArgument(
+			ast.template.value,
+			ast.template.wasQuoted,
+			ast.template.quoteChar,
+		);
+		const quotedAdditionalArgs = ast.additionalArgs.map((a) =>
+			quoteArgument(a.value, a.wasQuoted, a.quoteChar),
+		);
+
+		const npmParts = ["npm", "create", quotedTemplate];
+		const pnpmParts = ["pnpm", "create", quotedTemplate];
+		const yarnParts = ["yarn", "create", quotedTemplate];
+		const bunParts = ["bun", "create", quotedTemplate];
 
 		// npm requires -- separator before additional args
 		if (additionalArgs.length > 0) {
@@ -252,10 +295,10 @@ export class Transformer {
 			if (ast.hasSeparator || !ast.hasSeparator) {
 				npmParts.push("--");
 			}
-			npmParts.push(...additionalArgs);
-			pnpmParts.push(...additionalArgs);
-			yarnParts.push(...additionalArgs);
-			bunParts.push(...additionalArgs);
+			npmParts.push(...quotedAdditionalArgs);
+			pnpmParts.push(...quotedAdditionalArgs);
+			yarnParts.push(...quotedAdditionalArgs);
+			bunParts.push(...quotedAdditionalArgs);
 		} else if (ast.hasSeparator) {
 			// If there was a separator but no args, preserve it for npm
 			npmParts.push("--");
