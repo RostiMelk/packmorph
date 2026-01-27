@@ -32,11 +32,15 @@ export interface PackageNode extends ASTNode {
 	value: string;
 	scope?: string;
 	version?: string;
+	wasQuoted?: boolean;
+	quoteChar?: '"' | "'";
 }
 
 export interface ArgumentNode extends ASTNode {
 	type: "Argument";
 	value: string;
+	wasQuoted?: boolean;
+	quoteChar?: '"' | "'";
 }
 
 export interface SeparatorNode extends ASTNode {
