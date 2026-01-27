@@ -12,6 +12,7 @@ import type {
 	RunSuccessResult,
 	SuccessResult,
 } from "./types.js";
+import { quoteArgument } from "./utils.js";
 
 export class Transformer {
 	transform(ast: CommandNode): SuccessResult {
@@ -31,8 +32,15 @@ export class Transformer {
 		ast: InstallCommandNode,
 	): InstallSuccessResult {
 		const manager = ast.manager.value;
-		const packages = ast.packages.map((p) => p.value);
-		const hasPackages = packages.length > 0;
+		const packagesRaw = ast.packages.map((p) => p.value);
+		const packagesQuoted = ast.packages.map((p) =>
+			quoteArgument(
+				p.value,
+				p.type === "Argument" ? p.wasQuoted : undefined,
+				p.type === "Argument" ? p.quoteChar : undefined,
+			),
+		);
+		const hasPackages = packagesRaw.length > 0;
 
 		const flagState = {
 			dev: false,
@@ -155,10 +163,10 @@ export class Transformer {
 			pnpmParts.push(flag);
 		});
 
-		npmParts.push(...packages);
-		pnpmParts.push(...packages);
-		yarnParts.push(...packages);
-		bunParts.push(...packages);
+		npmParts.push(...packagesQuoted);
+		pnpmParts.push(...packagesQuoted);
+		yarnParts.push(...packagesQuoted);
+		bunParts.push(...packagesQuoted);
 
 		return {
 			ok: true,
@@ -170,7 +178,7 @@ export class Transformer {
 			meta: {
 				type: "install",
 				manager,
-				packages,
+				packages: packagesRaw,
 				dev: flagState.dev,
 				global: flagState.global,
 				exact: flagState.exact,
@@ -184,14 +192,34 @@ export class Transformer {
 
 	private transformExecCommand(ast: ExecCommandNode): ExecSuccessResult {
 		const manager = ast.manager.value;
-		const packageName = ast.package.value;
-		const args = ast.args.map((a) => a.value);
+		const packageNameRaw = ast.package.value;
+		const packageNameQuoted = quoteArgument(
+			ast.package.value,
+			ast.package.wasQuoted,
+			ast.package.quoteChar,
+		);
+		const argsRaw = ast.args.map((a) => a.value);
+		const argsQuoted = ast.args.map((a) =>
+			quoteArgument(a.value, a.wasQuoted, a.quoteChar),
+		);
 		const flags = ast.flags.map((f) => f.value);
 
-		const npmParts = ["npx", ...flags, packageName, ...args];
-		const pnpmParts = ["pnpm", "dlx", ...flags, packageName, ...args];
-		const yarnParts = ["yarn", "dlx", ...flags, packageName, ...args];
-		const bunParts = ["bunx", ...flags, packageName, ...args];
+		const npmParts = ["npx", ...flags, packageNameQuoted, ...argsQuoted];
+		const pnpmParts = [
+			"pnpm",
+			"dlx",
+			...flags,
+			packageNameQuoted,
+			...argsQuoted,
+		];
+		const yarnParts = [
+			"yarn",
+			"dlx",
+			...flags,
+			packageNameQuoted,
+			...argsQuoted,
+		];
+		const bunParts = ["bunx", ...flags, packageNameQuoted, ...argsQuoted];
 
 		return {
 			ok: true,
@@ -203,8 +231,8 @@ export class Transformer {
 			meta: {
 				type: "exec",
 				manager,
-				package: packageName,
-				args,
+				package: packageNameRaw,
+				args: argsRaw,
 				flags,
 			},
 		};
@@ -212,13 +240,21 @@ export class Transformer {
 
 	private transformRunCommand(ast: RunCommandNode): RunSuccessResult {
 		const manager = ast.manager.value;
-		const script = ast.script.value;
-		const args = ast.args.map((a) => a.value);
+		const scriptRaw = ast.script.value;
+		const scriptQuoted = quoteArgument(
+			ast.script.value,
+			ast.script.wasQuoted,
+			ast.script.quoteChar,
+		);
+		const argsRaw = ast.args.map((a) => a.value);
+		const argsQuoted = ast.args.map((a) =>
+			quoteArgument(a.value, a.wasQuoted, a.quoteChar),
+		);
 
-		const npmParts = ["npm", "run", script, ...args];
-		const pnpmParts = ["pnpm", "run", script, ...args];
-		const yarnParts = ["yarn", "run", script, ...args];
-		const bunParts = ["bun", "run", script, ...args];
+		const npmParts = ["npm", "run", scriptQuoted, ...argsQuoted];
+		const pnpmParts = ["pnpm", "run", scriptQuoted, ...argsQuoted];
+		const yarnParts = ["yarn", "run", scriptQuoted, ...argsQuoted];
+		const bunParts = ["bun", "run", scriptQuoted, ...argsQuoted];
 
 		return {
 			ok: true,
@@ -230,32 +266,40 @@ export class Transformer {
 			meta: {
 				type: "run",
 				manager,
-				script,
-				args,
+				script: scriptRaw,
+				args: argsRaw,
 			},
 		};
 	}
 
 	private transformCreateCommand(ast: CreateCommandNode): CreateSuccessResult {
 		const manager = ast.manager.value;
-		const template = ast.template.value;
-		const additionalArgs = ast.additionalArgs.map((a) => a.value);
+		const templateRaw = ast.template.value;
+		const templateQuoted = quoteArgument(
+			ast.template.value,
+			ast.template.wasQuoted,
+			ast.template.quoteChar,
+		);
+		const additionalArgsRaw = ast.additionalArgs.map((a) => a.value);
+		const additionalArgsQuoted = ast.additionalArgs.map((a) =>
+			quoteArgument(a.value, a.wasQuoted, a.quoteChar),
+		);
 
-		const npmParts = ["npm", "create", template];
-		const pnpmParts = ["pnpm", "create", template];
-		const yarnParts = ["yarn", "create", template];
-		const bunParts = ["bun", "create", template];
+		const npmParts = ["npm", "create", templateQuoted];
+		const pnpmParts = ["pnpm", "create", templateQuoted];
+		const yarnParts = ["yarn", "create", templateQuoted];
+		const bunParts = ["bun", "create", templateQuoted];
 
 		// npm requires -- separator before additional args
-		if (additionalArgs.length > 0) {
+		if (additionalArgsQuoted.length > 0) {
 			// If input had separator, preserve it; otherwise add it for npm
 			if (ast.hasSeparator || !ast.hasSeparator) {
 				npmParts.push("--");
 			}
-			npmParts.push(...additionalArgs);
-			pnpmParts.push(...additionalArgs);
-			yarnParts.push(...additionalArgs);
-			bunParts.push(...additionalArgs);
+			npmParts.push(...additionalArgsQuoted);
+			pnpmParts.push(...additionalArgsQuoted);
+			yarnParts.push(...additionalArgsQuoted);
+			bunParts.push(...additionalArgsQuoted);
 		} else if (ast.hasSeparator) {
 			// If there was a separator but no args, preserve it for npm
 			npmParts.push("--");
@@ -271,8 +315,8 @@ export class Transformer {
 			meta: {
 				type: "create",
 				manager,
-				template,
-				additionalArgs,
+				template: templateRaw,
+				additionalArgs: additionalArgsRaw,
 			},
 		};
 	}

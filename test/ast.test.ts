@@ -27,6 +27,9 @@ describe("AST-specific features", () => {
 			expect(result.ok).toBe(true);
 			if (result.ok && result.type === "install") {
 				expect(result.meta.packages).toEqual(["package with spaces"]);
+				// Should preserve quotes in output for strings with spaces
+				expect(result.npm).toBe('npm install "package with spaces"');
+				expect(result.pnpm).toBe('pnpm add "package with spaces"');
 			}
 		});
 
@@ -64,6 +67,8 @@ describe("AST-specific features", () => {
 			expect(result.ok).toBe(true);
 			if (result.ok && result.type === "exec") {
 				expect(result.meta.args).toEqual(["src/**/*.ts"]);
+				// Glob patterns don't strictly need quoting, so original quotes are not preserved
+				// unless the content matches the needsQuoting regex
 			}
 		});
 
@@ -75,6 +80,8 @@ describe("AST-specific features", () => {
 			if (result.ok && result.type === "exec") {
 				expect(result.meta.package).toBe("eslint");
 				expect(result.meta.args).toEqual(["file one.js", "file two.js"]);
+				// Should preserve quotes for file names with spaces
+				expect(result.npm).toBe('npx eslint "file one.js" "file two.js"');
 			}
 		});
 	});
@@ -88,6 +95,9 @@ describe("AST-specific features", () => {
 			if (result.ok && result.type === "create") {
 				expect(result.meta.template).toBe("vite");
 				expect(result.meta.additionalArgs).toEqual(["my project"]);
+				// Should preserve quotes for project names with spaces
+				expect(result.npm).toBe('npm create vite -- "my project"');
+				expect(result.pnpm).toBe('pnpm create vite "my project"');
 			}
 		});
 
@@ -120,6 +130,8 @@ describe("AST-specific features", () => {
 			if (result.ok && result.type === "run") {
 				expect(result.meta.script).toBe("build");
 				expect(result.meta.args).toEqual(["output dir"]);
+				// Should preserve quotes for arguments with spaces
+				expect(result.npm).toBe('npm run build "output dir"');
 			}
 		});
 	});

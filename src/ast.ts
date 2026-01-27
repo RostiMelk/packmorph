@@ -37,6 +37,8 @@ export interface PackageNode extends ASTNode {
 export interface ArgumentNode extends ASTNode {
 	type: "Argument";
 	value: string;
+	wasQuoted?: boolean;
+	quoteChar?: '"' | "'";
 }
 
 export interface SeparatorNode extends ASTNode {
