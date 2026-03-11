@@ -256,10 +256,26 @@ describe("npm commands", () => {
 			expect(result.ok).toBe(true);
 			if (result.ok) {
 				expect(result.npm).toBe("npm install --some-unknown-flag react");
-				expect(result.pnpm).toBe("pnpm add --some-unknown-flag react");
+				expect(result.pnpm).toBe("pnpm add react");
 				expect(result.yarn).toBe("yarn add react");
 				expect(result.bun).toBe("bun add react");
 				expect(result.meta.unknownFlags).toEqual(["--some-unknown-flag"]);
+			}
+		});
+
+		test("npm install with --legacy-peer-deps", () => {
+			const result = packmorph(
+				"npm install --legacy-peer-deps next-sanity @sanity/image-url",
+			);
+			expect(result.ok).toBe(true);
+			if (result.ok) {
+				expect(result.npm).toBe(
+					"npm install --legacy-peer-deps next-sanity @sanity/image-url",
+				);
+				expect(result.pnpm).toBe("pnpm add next-sanity @sanity/image-url");
+				expect(result.yarn).toBe("yarn add next-sanity @sanity/image-url");
+				expect(result.bun).toBe("bun add next-sanity @sanity/image-url");
+				expect(result.meta.unknownFlags).toEqual(["--legacy-peer-deps"]);
 			}
 		});
 	});

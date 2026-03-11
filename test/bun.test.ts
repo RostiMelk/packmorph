@@ -126,5 +126,17 @@ describe("bun commands", () => {
 				expect(result.meta.exact).toBe(true);
 			}
 		});
+
+		test("bun add with unknown flags", () => {
+			const result = packmorph("bun add --some-bun-flag react");
+			expect(result.ok).toBe(true);
+			if (result.ok) {
+				expect(result.npm).toBe("npm install react");
+				expect(result.pnpm).toBe("pnpm add react");
+				expect(result.yarn).toBe("yarn add react");
+				expect(result.bun).toBe("bun add --some-bun-flag react");
+				expect(result.meta.unknownFlags).toEqual(["--some-bun-flag"]);
+			}
+		});
 	});
 });
