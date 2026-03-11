@@ -126,5 +126,17 @@ describe("yarn commands", () => {
 				expect(result.meta.frozen).toBe(true);
 			}
 		});
+
+		test("yarn add with unknown flags", () => {
+			const result = packmorph("yarn add --some-yarn-flag react");
+			expect(result.ok).toBe(true);
+			if (result.ok) {
+				expect(result.npm).toBe("npm install react");
+				expect(result.pnpm).toBe("pnpm add react");
+				expect(result.yarn).toBe("yarn add --some-yarn-flag react");
+				expect(result.bun).toBe("bun add react");
+				expect(result.meta.unknownFlags).toEqual(["--some-yarn-flag"]);
+			}
+		});
 	});
 });

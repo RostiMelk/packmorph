@@ -77,5 +77,17 @@ describe("pnpm commands", () => {
 				expect(result.meta.exact).toBe(true);
 			}
 		});
+
+		test("pnpm add with unknown flags", () => {
+			const result = packmorph("pnpm add --some-pnpm-flag react");
+			expect(result.ok).toBe(true);
+			if (result.ok) {
+				expect(result.npm).toBe("npm install react");
+				expect(result.pnpm).toBe("pnpm add --some-pnpm-flag react");
+				expect(result.yarn).toBe("yarn add react");
+				expect(result.bun).toBe("bun add react");
+				expect(result.meta.unknownFlags).toEqual(["--some-pnpm-flag"]);
+			}
+		});
 	});
 });

@@ -155,8 +155,20 @@ export class Transformer {
 		}
 
 		unknownFlags.forEach((flag) => {
-			npmParts.push(flag);
-			pnpmParts.push(flag);
+			switch (manager) {
+				case "npm":
+					npmParts.push(flag);
+					break;
+				case "pnpm":
+					pnpmParts.push(flag);
+					break;
+				case "yarn":
+					yarnParts.push(flag);
+					break;
+				case "bun":
+					bunParts.push(flag);
+					break;
+			}
 		});
 
 		npmParts.push(...quotedPackages);
